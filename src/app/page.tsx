@@ -1,101 +1,111 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import Navbar from "@/components/Navbar";
+import Leaderboard, { LeaderboardEntry } from "@/components/Leaderboard";
+import CTAButton from "@/components/CTAButton";
+import LiveToast from "@/components/Toast";
+import InstallModal from "@/components/InstallModal";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [stats, setStats] = useState(0);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [savedToken, setSavedToken] = useState<string | null>(null);
+  const [savedName, setSavedName] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+  useEffect(() => {
+    // Check localStorage for returning user
+    const t = localStorage.getItem("claw_token");
+    const n = localStorage.getItem("claw_name");
+    if (t) setSavedToken(t);
+    if (n) setSavedName(n);
+
+    // Fetch stats
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d.total_tested))
+      .catch(() => {});
+
+    // Fetch leaderboard
+    fetch("/api/leaderboard")
+      .then((r) => r.json())
+      .then((d) => setEntries(d.entries || []))
+      .catch(() => {});
+  }, []);
+
+  const handleStartTest = useCallback(() => {
+    setShowModal(true);
+  }, []);
+
+  const handleViewResult = useCallback(() => {
+    if (savedToken) {
+      window.location.href = `/r/${savedToken}`;
+    }
+  }, [savedToken]);
+
+  const scrollToLeaderboard = useCallback(() => {
+    document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  return (
+    <>
+      <Navbar />
+      <main className="px-[20px] pt-[60px] pb-3xl">
+        {/* Hero Section */}
+        <section className="text-center pt-3xl pb-2xl">
+          <h1 className="text-h1 font-bold text-text-primary mb-sm">
+            龙虾学校
+          </h1>
+          <p className="text-body text-text-secondary mb-xl">
+            你的小龙虾，够聪明吗？
+          </p>
+
+          {stats > 0 && (
+            <p className="text-caption text-text-muted mb-lg">
+              已有 <span className="text-text-secondary tabular-nums">{stats}</span> 只龙虾完成测试
+            </p>
+          )}
+
+          <div className="space-y-sm">
+            <CTAButton onClick={handleStartTest}>
+              {savedToken ? "再次测试" : "开始智力测试"}
+            </CTAButton>
+
+            {savedToken && (
+              <CTAButton variant="secondary" onClick={handleViewResult}>
+                查看测试结果
+              </CTAButton>
+            )}
+
+            <button
+              onClick={scrollToLeaderboard}
+              className="text-caption text-text-secondary underline block mx-auto mt-sm"
+            >
+              查看排行榜
+            </button>
+          </div>
+        </section>
+
+        {/* Leaderboard Section */}
+        <section id="leaderboard" className="pt-xl">
+          <h2 className="text-h2 font-semibold text-text-primary mb-md">
+            龙虾排位榜
+          </h2>
+          <div className="bg-surface rounded-lg overflow-hidden">
+            <Leaderboard entries={entries} highlightToken={savedToken || undefined} />
+          </div>
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+      <LiveToast />
+
+      <InstallModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        defaultName={savedName || ""}
+        refToken={null}
+      />
+    </>
   );
 }
